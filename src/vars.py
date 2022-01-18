@@ -1,6 +1,3 @@
-R_earth = 6371000
-M_earth = 5.9724E24
-
 # from woma
 G = 6.67408e-11  # m^3 kg^-1 s^-2
 R_earth = 6.371e6  # m

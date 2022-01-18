@@ -82,10 +82,12 @@ ANEOS_forsterite_cp.__dict__ = {'P': 0.159304, 's': 0.00637921, 'T': 6043.58, 'r
 ANEOS_Fe85Si15_cp = EOScriticalpoint()
 ANEOS_Fe85Si15_cp.__dict__ = {'P': 0.540777, 's': 0.00402756, 'T': 7279.36, 'rho': 857.1319999999999, 'u': 11.0937, 'units': 'T K, rho kg/m3, P GPa, U MJ/kg, S MJ/K/kg'}
 
-ANEOS_forsterite_vc = read_eosvaporcurve("../data/ANEOS_forsterite_vc.txt")
-ANEOS_forsterite_mc = read_eosmeltcurve("../data/ANEOS_forsterite_mc.txt")
-ANEOS_Fe85Si15_vc = read_eosvaporcurve("../data/ANEOS_Fe85Si15_vc.txt")
-ANEOS_Fe85Si15_mc = read_eosmeltcurve("../data/ANEOS_Fe85Si15_mc.txt")
+dirname = os.path.dirname
+path = os.path.dirname(__file__)
+ANEOS_forsterite_vc = read_eosvaporcurve(os.path.join(dirname(path), "data/ANEOS_forsterite_vc.txt"))
+ANEOS_forsterite_mc = read_eosmeltcurve(os.path.join(dirname(path), "data/ANEOS_forsterite_mc.txt"))
+ANEOS_Fe85Si15_vc = read_eosvaporcurve(os.path.join(dirname(path), "data/ANEOS_Fe85Si15_vc.txt"))
+ANEOS_Fe85Si15_mc = read_eosmeltcurve(os.path.join(dirname(path), "data/ANEOS_Fe85Si15_mc.txt"))
     
     
 def plot_ANEOS_rhou(ax, mat, **kwargs):
