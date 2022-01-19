@@ -218,7 +218,7 @@ def A1_find_nearest(array, values):
         A1_nearest[i] = idx
     return A1_nearest
 
-def A1_above_vc(A1_rho, A1_u, A1_mat_id):
+def compute_A1_above_vc(A1_rho, A1_u, A1_mat_id):
     
     assert len(A1_rho) == len(A1_u), f"A1_rho and A1_u must have the same length"
     assert len(A1_rho) == len(A1_mat_id), f"A1_rho and A1_mat_id must have the same length"
@@ -232,7 +232,7 @@ def A1_above_vc(A1_rho, A1_u, A1_mat_id):
     # TODO: throw error if any mat_id not in the ones above
     
     # set array to return
-    A1_above_vc = np.zeros_like(A1_rho)
+    A1_above_vc = np.zeros_like(A1_rho, dtype=np.bool)
         
     # check if density is too high (not sure if necesary)
     #A1_above_vc[np.logical_and.reduce((mask_forsterite, A1_rho > np.max(src.eos.ANEOS_forsterite_vc.A1_rho_liq)))] = -1
@@ -265,12 +265,12 @@ def A1_above_vc(A1_rho, A1_u, A1_mat_id):
     A1_above_vc[mask_Fe85Si15_left] = A1_u_Fe85Si15_left > ANEOS_Fe85Si15_vc.A1_u_vap[A1_idx_Fe85Si15_left]
     
     # check if density is too high (not sure if necesary, label as vapor for now)
-    A1_above_vc[np.logical_and.reduce((mask_forsterite, A1_rho > np.max(ANEOS_forsterite_vc.A1_rho_liq)))] = 1
-    A1_above_vc[np.logical_and.reduce((mask_Fe85Si15, A1_rho > np.max(ANEOS_Fe85Si15_vc.A1_rho_liq)))] = 1
+    A1_above_vc[np.logical_and.reduce((mask_forsterite, A1_rho > np.max(ANEOS_forsterite_vc.A1_rho_liq)))] = True
+    A1_above_vc[np.logical_and.reduce((mask_Fe85Si15, A1_rho > np.max(ANEOS_Fe85Si15_vc.A1_rho_liq)))] = True
     
     return A1_above_vc
 
-def A1_above_mc_liq(A1_rho, A1_u, A1_mat_id):
+def compute_A1_above_mc_liq(A1_rho, A1_u, A1_mat_id):
     
     assert len(A1_rho) == len(A1_u), f"A1_rho and A1_u must have the same length"
     assert len(A1_rho) == len(A1_mat_id), f"A1_rho and A1_mat_id must have the same length"
@@ -284,7 +284,7 @@ def A1_above_mc_liq(A1_rho, A1_u, A1_mat_id):
     # TODO: throw error if any mat_id not in the ones above
     
     # set array to return
-    A1_above = np.zeros_like(A1_rho)
+    A1_above = np.zeros_like(A1_rho, dtype=np.bool)
         
     # check if density is too high (not sure if necesary)
     #A1_above_vc[np.logical_and.reduce((mask_forsterite, A1_rho > np.max(src.eos.ANEOS_forsterite_vc.A1_rho_liq)))] = -1
@@ -305,7 +305,7 @@ def A1_above_mc_liq(A1_rho, A1_u, A1_mat_id):
     
     return A1_above
 
-def A1_above_mc_sol(A1_rho, A1_u, A1_mat_id):
+def compute_A1_above_mc_sol(A1_rho, A1_u, A1_mat_id):
     
     assert len(A1_rho) == len(A1_u), f"A1_rho and A1_u must have the same length"
     assert len(A1_rho) == len(A1_mat_id), f"A1_rho and A1_mat_id must have the same length"
@@ -319,7 +319,7 @@ def A1_above_mc_sol(A1_rho, A1_u, A1_mat_id):
     # TODO: throw error if any mat_id not in the ones above
     
     # set array to return
-    A1_above = np.zeros_like(A1_rho)
+    A1_above = np.zeros_like(A1_rho, dtype=np.bool)
         
     # check if density is too high (not sure if necesary)
     #A1_above_vc[np.logical_and.reduce((mask_forsterite, A1_rho > np.max(src.eos.ANEOS_forsterite_vc.A1_rho_liq)))] = -1
@@ -339,3 +339,22 @@ def A1_above_mc_sol(A1_rho, A1_u, A1_mat_id):
     # TODO: check if density is too low (not sure if necesary, 0 for now)
     
     return A1_above
+
+def compute_A1_phase(A1_rho, A1_u, A1_mat_id, **kwargs):
+    
+    A1_above_vc = compute_A1_above_vc(A1_rho, A1_u, A1_mat_id)
+    A1_above_mc_liq = compute_A1_above_mc_liq(A1_rho, A1_u, A1_mat_id)
+    A1_above_mc_sol = compute_A1_above_mc_sol(A1_rho, A1_u, A1_mat_id)
+    
+    A1_phase = np.zeros_like(A1_rho)
+    
+    A1_phase[np.logical_and.reduce((A1_above_vc, A1_above_mc_liq))] = 0 # liquid/vapor
+    A1_phase[~A1_above_vc] = 1 # vapor dome
+    A1_phase[np.logical_and.reduce((A1_above_vc, ~A1_above_mc_sol))] = 2 # solid
+    A1_phase[np.logical_and.reduce((A1_above_vc, ~A1_above_mc_liq, A1_above_mc_sol))] = 3 # melt
+    
+    verbose = kwargs.get("verbose", 1)
+    if verbose >= 1:
+        print(f"liquid/vapor:0, vapordome:1, solid:2, melt:3")
+    
+    return A1_phase
