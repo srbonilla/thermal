@@ -269,3 +269,73 @@ def A1_above_vc(A1_rho, A1_u, A1_mat_id):
     A1_above_vc[np.logical_and.reduce((mask_Fe85Si15, A1_rho > np.max(ANEOS_Fe85Si15_vc.A1_rho_liq)))] = 1
     
     return A1_above_vc
+
+def A1_above_mc_liq(A1_rho, A1_u, A1_mat_id):
+    
+    assert len(A1_rho) == len(A1_u), f"A1_rho and A1_u must have the same length"
+    assert len(A1_rho) == len(A1_mat_id), f"A1_rho and A1_mat_id must have the same length"
+    assert A1_rho.ndim == 1, f"A1_rho must have dimension 1"
+    assert A1_u.ndim == 1, f"A1_u must have dimension 1"
+    assert A1_mat_id.ndim == 1, f"A1_mat_id must have dimension 1"
+    
+    mask_forsterite = A1_mat_id == src.vars.Di_mat_id["ANEOS_forsterite"]
+    mask_Fe85Si15 = A1_mat_id == src.vars.Di_mat_id["ANEOS_Fe85Si15"]
+    
+    # TODO: throw error if any mat_id not in the ones above
+    
+    # set array to return
+    A1_above = np.zeros_like(A1_rho)
+        
+    # check if density is too high (not sure if necesary)
+    #A1_above_vc[np.logical_and.reduce((mask_forsterite, A1_rho > np.max(src.eos.ANEOS_forsterite_vc.A1_rho_liq)))] = -1
+    #A1_above_vc[np.logical_and.reduce((mask_Fe85Si15, A1_rho > np.max(src.eos.ANEOS_Fe85Si15_vc.A1_rho_liq)))] = -1
+    
+    # above curve
+    A1_rho_forsterite = A1_rho[mask_forsterite]
+    A1_u_forsterite = A1_u[mask_forsterite]
+    A1_idx_forsterite = A1_find_nearest(ANEOS_forsterite_mc.A1_rho_liq, A1_rho_forsterite)
+    A1_above[mask_forsterite] = A1_u_forsterite > ANEOS_forsterite_mc.A1_u_liq[A1_idx_forsterite]
+    
+    A1_rho_Fe85Si15 = A1_rho[mask_Fe85Si15]
+    A1_u_Fe85Si15 = A1_u[mask_Fe85Si15]
+    A1_idx_Fe85Si15 = A1_find_nearest(ANEOS_Fe85Si15_mc.A1_rho_liq, A1_rho_Fe85Si15)
+    A1_above[mask_Fe85Si15] = A1_u_Fe85Si15 > ANEOS_Fe85Si15_mc.A1_u_liq[A1_idx_Fe85Si15]
+    
+    # TODO: check if density is too low (not sure if necesary, 0 for now)
+    
+    return A1_above
+
+def A1_above_mc_sol(A1_rho, A1_u, A1_mat_id):
+    
+    assert len(A1_rho) == len(A1_u), f"A1_rho and A1_u must have the same length"
+    assert len(A1_rho) == len(A1_mat_id), f"A1_rho and A1_mat_id must have the same length"
+    assert A1_rho.ndim == 1, f"A1_rho must have dimension 1"
+    assert A1_u.ndim == 1, f"A1_u must have dimension 1"
+    assert A1_mat_id.ndim == 1, f"A1_mat_id must have dimension 1"
+    
+    mask_forsterite = A1_mat_id == src.vars.Di_mat_id["ANEOS_forsterite"]
+    mask_Fe85Si15 = A1_mat_id == src.vars.Di_mat_id["ANEOS_Fe85Si15"]
+    
+    # TODO: throw error if any mat_id not in the ones above
+    
+    # set array to return
+    A1_above = np.zeros_like(A1_rho)
+        
+    # check if density is too high (not sure if necesary)
+    #A1_above_vc[np.logical_and.reduce((mask_forsterite, A1_rho > np.max(src.eos.ANEOS_forsterite_vc.A1_rho_liq)))] = -1
+    #A1_above_vc[np.logical_and.reduce((mask_Fe85Si15, A1_rho > np.max(src.eos.ANEOS_Fe85Si15_vc.A1_rho_liq)))] = -1
+    
+    # above curve
+    A1_rho_forsterite = A1_rho[mask_forsterite]
+    A1_u_forsterite = A1_u[mask_forsterite]
+    A1_idx_forsterite = A1_find_nearest(ANEOS_forsterite_mc.A1_rho_sol, A1_rho_forsterite)
+    A1_above[mask_forsterite] = A1_u_forsterite > ANEOS_forsterite_mc.A1_u_sol[A1_idx_forsterite]
+    
+    A1_rho_Fe85Si15 = A1_rho[mask_Fe85Si15]
+    A1_u_Fe85Si15 = A1_u[mask_Fe85Si15]
+    A1_idx_Fe85Si15 = A1_find_nearest(ANEOS_Fe85Si15_mc.A1_rho_sol, A1_rho_Fe85Si15)
+    A1_above[mask_Fe85Si15] = A1_u_Fe85Si15 > ANEOS_Fe85Si15_mc.A1_u_sol[A1_idx_Fe85Si15]
+    
+    # TODO: check if density is too low (not sure if necesary, 0 for now)
+    
+    return A1_above
