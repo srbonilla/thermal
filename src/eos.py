@@ -1,6 +1,7 @@
 import os
 import numpy as np
-from numba import njit
+from numba import njit, jit
+import src.vars
 
 class EOSvaporcurve:
     """Class for vapor curve from ANEOS."""
@@ -128,13 +129,12 @@ def plot_ANEOS_sP(ax, mat, **kwargs):
     ax.plot(mc.A1_s_liq, mc.A1_P_liq, color="black", linewidth=lw)
     ax.plot(mc.A1_s_sol, mc.A1_P_sol, color="black", linewidth=lw)
     
-@njit()
+#@njit()
 def find_nearest(array, value):
     array = np.asarray(array)
     idx = (np.abs(array - value)).argmin()
     return idx, array[idx]
 
-#@njit()
 def above_vc(rho, u, mat):
     
     if mat == "ANEOS_forsterite":
@@ -205,3 +205,67 @@ def above_mc_sol(rho, u, mat):
     else:
         return 0
     
+# implement same functions for arrays
+@njit()
+def A1_find_nearest(array, values):
+
+    assert array.ndim == 1
+    assert values.ndim == 1
+    
+    A1_nearest = np.zeros_like(values, dtype=np.int16)
+    for i, value in enumerate(values):
+        idx = (np.abs(array - value)).argmin()
+        A1_nearest[i] = idx
+    return A1_nearest
+
+def A1_above_vc(A1_rho, A1_u, A1_mat_id):
+    
+    assert len(A1_rho) == len(A1_u), f"A1_rho and A1_u must have the same length"
+    assert len(A1_rho) == len(A1_mat_id), f"A1_rho and A1_mat_id must have the same length"
+    assert A1_rho.ndim == 1, f"A1_rho must have dimension 1"
+    assert A1_u.ndim == 1, f"A1_u must have dimension 1"
+    assert A1_mat_id.ndim == 1, f"A1_mat_id must have dimension 1"
+    
+    mask_forsterite = A1_mat_id == src.vars.Di_mat_id["ANEOS_forsterite"]
+    mask_Fe85Si15 = A1_mat_id == src.vars.Di_mat_id["ANEOS_Fe85Si15"]
+    
+    # TODO: throw error if any mat_id not in the ones above
+    
+    # set array to return
+    A1_above_vc = np.zeros_like(A1_rho)
+        
+    # check if density is too high (not sure if necesary)
+    #A1_above_vc[np.logical_and.reduce((mask_forsterite, A1_rho > np.max(src.eos.ANEOS_forsterite_vc.A1_rho_liq)))] = -1
+    #A1_above_vc[np.logical_and.reduce((mask_Fe85Si15, A1_rho > np.max(src.eos.ANEOS_Fe85Si15_vc.A1_rho_liq)))] = -1
+    
+    # right to the critical point density
+    mask_forsterite_right = np.logical_and.reduce((mask_forsterite, A1_rho > ANEOS_forsterite_cp.rho))
+    A1_rho_forsterite_right = A1_rho[mask_forsterite_right]
+    A1_u_forsterite_right = A1_u[mask_forsterite_right]
+    A1_idx_forsterite_right = A1_find_nearest(ANEOS_forsterite_vc.A1_rho_liq, A1_rho_forsterite_right)
+    A1_above_vc[mask_forsterite_right] = A1_u_forsterite_right > ANEOS_forsterite_vc.A1_u_liq[A1_idx_forsterite_right]
+    
+    mask_Fe85Si15_right = np.logical_and.reduce((mask_Fe85Si15, A1_rho > ANEOS_Fe85Si15_cp.rho))
+    A1_rho_Fe85Si15_right = A1_rho[mask_Fe85Si15_right]
+    A1_u_Fe85Si15_right = A1_u[mask_Fe85Si15_right]
+    A1_idx_Fe85Si15_right = A1_find_nearest(ANEOS_Fe85Si15_vc.A1_rho_liq, A1_rho_Fe85Si15_right)
+    A1_above_vc[mask_Fe85Si15_right] = A1_u_Fe85Si15_right > ANEOS_Fe85Si15_vc.A1_u_liq[A1_idx_Fe85Si15_right]
+    
+    # left to the critical point density
+    mask_forsterite_left = np.logical_and.reduce((mask_forsterite, A1_rho <= ANEOS_forsterite_cp.rho))
+    A1_rho_forsterite_left = A1_rho[mask_forsterite_left]
+    A1_u_forsterite_left = A1_u[mask_forsterite_left]
+    A1_idx_forsterite_left = A1_find_nearest(ANEOS_forsterite_vc.A1_rho_vap, A1_rho_forsterite_left)
+    A1_above_vc[mask_forsterite_left] = A1_u_forsterite_left > ANEOS_forsterite_vc.A1_u_vap[A1_idx_forsterite_left]
+    
+    mask_Fe85Si15_left = np.logical_and.reduce((mask_Fe85Si15, A1_rho <= ANEOS_Fe85Si15_cp.rho))
+    A1_rho_Fe85Si15_left = A1_rho[mask_Fe85Si15_left]
+    A1_u_Fe85Si15_left = A1_u[mask_Fe85Si15_left]
+    A1_idx_Fe85Si15_left = A1_find_nearest(ANEOS_Fe85Si15_vc.A1_rho_vap, A1_rho_Fe85Si15_left)
+    A1_above_vc[mask_Fe85Si15_left] = A1_u_Fe85Si15_left > ANEOS_Fe85Si15_vc.A1_u_vap[A1_idx_Fe85Si15_left]
+    
+    # check if density is too high (not sure if necesary, label as vapor for now)
+    A1_above_vc[np.logical_and.reduce((mask_forsterite, A1_rho > np.max(ANEOS_forsterite_vc.A1_rho_liq)))] = 1
+    A1_above_vc[np.logical_and.reduce((mask_Fe85Si15, A1_rho > np.max(ANEOS_Fe85Si15_vc.A1_rho_liq)))] = 1
+    
+    return A1_above_vc
