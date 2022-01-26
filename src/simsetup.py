@@ -344,6 +344,7 @@ def get_dir_impact_name(N, mt, mi, v, a, **kwargs):
     assert rep in (1,2,3,4), f"rep must be in (1,2,3,4)"
     assert a > 0, f"angle must be > 0 and < 90"
     assert a < 90, f"angle must be > 0 and < 90"
+    assert v < 10, f"v must be in escape velocity units"
     
     name = "mt" + str(mt).replace(".", "") + "_mi" + str(mi).replace(".", "") + \
            "_v" + str(v).replace(".", "") + "_a" + "{:.2f}".format(a).zfill(5).replace(".", "") + \
