@@ -25,7 +25,8 @@ def get_swift_flavour(hydro, kernel):
 
 def get_dir_settling_name(N, m, **kwargs):
     
-    L = kwargs.get("L", 0)
+    L = kwargs.get("L", 0.)
+    L = float(L)
     kernel = kwargs.get("kernel", "wc6")
     hydro = kwargs.get("hydro", "GDF")
     
@@ -68,7 +69,7 @@ def make_dir_settling(N, m, **kwargs):
     
     return None
 
-def make_yml_settling(N, m, **kwargs):
+def make_yml(folder_path, N, **kwargs):
     
     delta_time = kwargs.get("delta_time", 2000)
     eta = kwargs.get("eta", 1.2348)
@@ -77,8 +78,7 @@ def make_yml_settling(N, m, **kwargs):
     
     assert mat in ("ANEOS", "Til"), f"mat must be in ANEOS or Til"
     
-    folder_name = get_dir_settling(N, m, **kwargs)
-    fn = os.path.join(folder_name, "planet.yml")
+    fn = os.path.join(folder_path, "planet.yml")
     
     f = open(fn,"w+")
 
@@ -180,7 +180,7 @@ def make_yml_settling(N, m, **kwargs):
 
     f.close()
     
-def make_script_slurm(N, m, **kwargs):
+def make_script_slurm(folder_path, **kwargs):
     
     time = kwargs.get("time", "72:00:00")
     hydro = kwargs.get("hydro")
@@ -194,8 +194,7 @@ def make_script_slurm(N, m, **kwargs):
     for i in (0,1,3,4,6,7):
         assert time[i].isnumeric(), error_message
     
-    folder_name = get_dir_settling(N, m, **kwargs)
-    fn = os.path.join(folder_name, "script_slurm.sh")
+    fn = os.path.join(folder_path, "script_slurm.sh")
     
     with open(fn, 'w') as f:
         f.write("#!/bin/bash -l\n\n")
@@ -237,7 +236,7 @@ def make_script_slurm(N, m, **kwargs):
         f.write("sacct -j $SLURM_JOBID --format=JobID,JobName,Partition,MaxRSS,Elapsed,ExitCode\n")
         f.write("exit\n")
         
-    fn = os.path.join(folder_name, "script_slurm_restart.sh")
+    fn = os.path.join(folder_path, "script_slurm_restart.sh")
     
     with open(fn, 'w') as f:
         f.write("#!/bin/bash -l\n\n")
@@ -334,15 +333,20 @@ def get_dir_impact_name(N, mt, mi, v, a, **kwargs):
     hydro = kwargs.get("hydro", "GDF")
     rep = kwargs.get("rep", 1)
     
+    v = float(v)
+    a = float(a)
+    
     assert N in (1e5, 1e6, 1e7), f"N must be 1e5, 1e6, or 1e7"
     assert mt > 0 and mt < 1e-8*src.vars.M_earth, f"mt must be in M_earth units"
     assert mi > 0 and mi < 1e-8*src.vars.M_earth, f"mt must be in M_earth units"
     assert hydro in ("nSPH", "GDF"), f"hydro must be nSPH, or GDF"
     assert kernel in ("s3", "wc6"), f"kernel must be s3, or wc6"
     assert rep in (1,2,3,4), f"rep must be in (1,2,3,4)"
+    assert a > 0, f"angle must be > 0 and < 90"
+    assert a < 90, f"angle must be > 0 and < 90"
     
     name = "mt" + str(mt).replace(".", "") + "_mi" + str(mi).replace(".", "") + \
-           "_v" + str(v).replace(".", "") + "_a" + str(a).replace(".", "") + \
+           "_v" + str(v).replace(".", "") + "_a" + "{:.2f}".format(a).zfill(5).replace(".", "") + \
            "_Lt" + str(Lt).replace(".", "") + "_Li" + str(Li).replace(".", "") + \
            "_hydro" + hydro + "_kernel" + kernel + \
            "_" + str(rep)
@@ -365,3 +369,23 @@ def get_snapshot_planet(N, m, n_snap=-1, **kwargs):
     files = sorted(files)
     
     return os.path.join(snapshots_folder, files[n_snap])
+
+def make_dir_impact(N, mt, mi, v, a, **kwargs):
+    
+    folder_name = get_dir_impact(N, mt, mi, v, a, **kwargs)
+    
+    if not os.path.isdir(folder_name):
+        command = "mkdir " + folder_name
+        os.system(command)
+        
+        command = "mkdir " + os.path.join(folder_name, "snapshots")
+        os.system(command)
+        command = "mkdir " + os.path.join(folder_name, "restart")
+        os.system(command)
+        command = "mkdir " + os.path.join(folder_name, "images")
+        os.system(command)
+        
+    else:
+        print(f"Folder {folder_name} already exists.")
+    
+    return None
