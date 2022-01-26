@@ -23,7 +23,7 @@ def get_swift_flavour(hydro, kernel):
         
     return swift
 
-def get_dir_name(N, m, **kwargs):
+def get_dir_settling_name(N, m, **kwargs):
     
     L = kwargs.get("L", 0)
     kernel = kwargs.get("kernel", "wc6")
@@ -43,7 +43,7 @@ def get_dir_settling(N, m, **kwargs):
     assert m < 1e-8*src.vars.M_earth, f"m must be in M_earth units"
     
     N_str = "N{:.1e}".format(N).replace("+", "").replace(".0", "").replace("e0", "e")
-    name = get_dir_name(N, m, **kwargs)
+    name = get_dir_settling_name(N, m, **kwargs)
     folder_name = os.path.join(dirname(path), "data/sims", N_str, name)
     
     return folder_name
@@ -298,3 +298,70 @@ def start_settling_sim(N, m, **kwargs):
     command = "sbatch script_slurm.sh"
     print(command)
     #os.system(command)
+    
+### functions to setup an impact
+def get_system_v_esc(M_t, R_t, M_i, R_i):
+    """
+    Compute the common escape velocity
+
+    Parameters
+    ----------
+    M_t : float
+        Mass of the target (kg).
+    R_t : float
+        Radius of the target (m).
+    M_i : float
+        Mass of the impactor (kg).
+    R_i : float
+        Radius of the impactor (m).
+
+    Returns
+    -------
+    float
+        Escape velocity (m/s).
+
+    """
+    mu = G * (M_t + M_i)
+    r_c = R_t + R_i
+
+    return np.sqrt(2 * mu / r_c)
+
+def get_dir_impact_name(N, mt, mi, v, a, **kwargs):
+    
+    Lt = kwargs.get("Lt", 0)
+    Li = kwargs.get("Li", 0)
+    kernel = kwargs.get("kernel", "wc6")
+    hydro = kwargs.get("hydro", "GDF")
+    rep = kwargs.get("rep", 1)
+    
+    assert N in (1e5, 1e6, 1e7), f"N must be 1e5, 1e6, or 1e7"
+    assert mt > 0 and mt < 1e-8*src.vars.M_earth, f"mt must be in M_earth units"
+    assert mi > 0 and mi < 1e-8*src.vars.M_earth, f"mt must be in M_earth units"
+    assert hydro in ("nSPH", "GDF"), f"hydro must be nSPH, or GDF"
+    assert kernel in ("s3", "wc6"), f"kernel must be s3, or wc6"
+    assert rep in (1,2,3,4), f"rep must be in (1,2,3,4)"
+    
+    name = "mt" + str(mt).replace(".", "") + "_mi" + str(mi).replace(".", "") + \
+           "_v" + str(v).replace(".", "") + "_a" + str(a).replace(".", "") + \
+           "_Lt" + str(Lt).replace(".", "") + "_Li" + str(Li).replace(".", "") + \
+           "_hydro" + hydro + "_kernel" + kernel + \
+           "_" + str(rep)
+        
+    return name
+
+def get_dir_impact(N, mt, mi, v, a, **kwargs):
+    
+    N_str = "N{:.1e}".format(N).replace("+", "").replace(".0", "").replace("e0", "e")
+    name = get_dir_impact_name(N, mt, mi, v, a, **kwargs)
+    folder_name = os.path.join(dirname(path), "data/sims", N_str, name)
+    
+    return folder_name
+
+def get_snapshot_planet(N, m, n_snap=-1, **kwargs):
+    folder = src.simsetup.get_dir_settling(N, m, **kwargs)
+    snapshots_folder = os.path.join(folder, "snapshots")
+    
+    files = [f for f in os.listdir(snapshots_folder) if f[-4:] == "hdf5"]
+    files = sorted(files)
+    
+    return os.path.join(snapshots_folder, files[n_snap])
