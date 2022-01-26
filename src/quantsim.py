@@ -9,12 +9,25 @@ class SimData:
         self.type = type
         self.data = sio.load(fp)
         self.fp = fp
+        
         self.A2_pos = self.data.gas.coordinates.value - self.data.metadata.boxsize.value/2 # R_earth units
+        self.A2_vel = self.data.gas.velocities.value
         self.A1_r = np.sqrt(np.sum((self.A2_pos)**2, axis=1))
         self.A1_rho = self.data.gas.densities.value * src.vars.M_earth / src.vars.R_earth**3 # kg m3
         self.A1_u = self.data.gas.internal_energies.value * src.vars.R_earth**2 / 1e6 # MJ
         self.A1_P = self.data.gas.pressures.value * src.vars.M_earth / src.vars.R_earth # Pa
+        self.A1_m = self.data.gas.masses.value
         
+        self.units = {
+            "A2_pos":"R_earth",
+            "A2_vel":"R_earth/s",
+            "A1_r":"R_earth",
+            "A1_rho":"kg/m3",
+            "A1_u":"MJ/kg",
+            "A1_P":"Pa",
+            "A1_m":"M_earth",
+            "A1_L":"L_em",
+        }
         
     @property
     def r_eq(self):
@@ -46,7 +59,18 @@ class SimData:
         
     @property
     def total_mass(self):
-        mass = np.sum(self.data.gas.masses.value) # M_earth units
+        mass = np.sum(self.A1_m) # M_earth units
         return mass
+    
+    @property
+    def A1_L(self):
+        A1_L = self.A1_m.reshape(-1,1)*np.cross(self.A2_pos, self.A2_vel)
+        A1_L *= src.vars.M_earth * src.vars.R_earth**2 / src.vars.L_em
+        return A1_L
+    
+    @property
+    def angular_momentum(self):
+        L = np.sum(self.A1_L)
+        return L
         
         
