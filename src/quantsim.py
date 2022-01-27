@@ -17,6 +17,7 @@ class SimData:
         self.A1_u = self.data.gas.internal_energies.value * src.vars.R_earth**2 / 1e6 # MJ
         self.A1_P = self.data.gas.pressures.value * src.vars.M_earth / src.vars.R_earth # Pa
         self.A1_m = self.data.gas.masses.value
+        self.A1_mat_id = self.data.gas.material_ids.value
         
         self.units = {
             "A2_pos":"R_earth",
@@ -72,5 +73,10 @@ class SimData:
     def angular_momentum(self):
         L = np.sum(self.A1_L)
         return L
+    
+    @property
+    def centre_of_mass(self):
+        CoM = np.sum(self.A1_m.reshape(-1,1)*self.A2_pos, axis=0)/np.sum(self.A1_m)
+        return CoM
         
         
