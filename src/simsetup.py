@@ -23,19 +23,61 @@ def get_swift_flavour(hydro, kernel):
         
     return swift
 
-def get_dir_settling_name(N, m, **kwargs):
-    
-    L = kwargs.get("L", 0.)
-    L = float(L)
-    kernel = kwargs.get("kernel", "wc6")
-    hydro = kwargs.get("hydro", "GDF")
+def get_sim_name(N, **kwargs):
     
     assert N in (1e5, 1e6, 1e7), f"N must be 1e5, 1e6, or 1e7"
-    assert m > 0 and m < 1e-8*src.vars.M_earth, f"m must be in M_earth units"
-    assert hydro in ("nSPH", "GDF"), f"hydro must be nSPH, or GDF"
-    assert kernel in ("s3", "wc6"), f"kernel must be s3, or wc6"
     
-    name = "m" + str(m).replace(".", "") + "_L" + str(L).replace(".", "") + "_hydro" + hydro + "_kernel" + kernel
+    type = kwargs.get("type")
+    assert type in ("settling", "impact"), f"type must be settling, or impact"
+    
+    kernel = kwargs.get("kernel")
+    assert kernel in ("s3", "wc6"), f"kernel must be s3, or wc6"
+    hydro = kwargs.get("hydro")
+    assert hydro in ("nSPH", "GDF"), f"hydro scheme must be nSPH or GDF"
+    
+    
+    if type == "settling":
+        L = kwargs.get("L", 0.)
+        L = float(L)
+        
+        m = kwargs.get("m")
+        assert m, f"m not indicated in **kwargs"
+        assert m > 0 and m < 1e-8*src.vars.M_earth, f"m must be in M_earth units"
+    
+        name = "m" + str(m).replace(".", "") + "_L" + str(L).replace(".", "") + "_hydro" + hydro + "_kernel" + kernel
+        
+    elif type == "impact":
+        
+        L_target = kwargs.get("L_target", 0)
+        L_impactor = kwargs.get("L_impactor", 0)
+        rep = kwargs.get("rep", 1)
+        assert rep in (1,2,3,4), f"rep must be in (1,2,3,4)"
+        
+        v_imp = kwargs.get("v_imp")
+        assert v_imp, f"v_imp not indicated in **kwargs"
+        angle = kwargs.get("angle")
+        assert angle, f"angle not indicated in **kwargs"
+        v_imp = float(v_imp)
+        angle = float(angle)
+        
+        m_target = kwargs.get("m_target")
+        assert m_target, f"m_target not indicated in **kwargs"
+        m_impactor = kwargs.get("m_impactor")
+        assert m_impactor, f"m_impactor not indicated in **kwargs"
+        assert m_target > 0 and m_target < 1e-8*src.vars.M_earth, f"m_target must be in M_earth units"
+        assert m_impactor > 0 and m_impactor < 1e-8*src.vars.M_earth, f"m_impactor must be in M_earth units"
+        
+        assert angle > 0, f"angle must be > 0 and < 90"
+        assert angle < 90, f"angle must be > 0 and < 90"
+        assert v_imp < 10, f"v must be in escape velocity units"
+    
+        name = "mt" + str(m_target).replace(".", "") + "_mi" + str(m_impactor).replace(".", "") + \
+               "_v" + str(v_imp).replace(".", "") + "_a" + "{:.2f}".format(angle).zfill(5).replace(".", "") + \
+               "_Lt" + str(L_target).replace(".", "") + "_Li" + str(L_impactor).replace(".", "") + \
+               "_hydro" + hydro + "_kernel" + kernel + \
+               "_" + str(rep)
+        
+    
     return name
 
 def get_dir_settling(N, m, **kwargs):
