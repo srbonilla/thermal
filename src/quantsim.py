@@ -1,6 +1,7 @@
 import numpy as np
 import swiftsimio as sio
 import src.vars
+import woma
 
 class SimData:
     def __init__(self, fp, type):
@@ -18,6 +19,8 @@ class SimData:
         self.A1_P = self.data.gas.pressures.value * src.vars.M_earth / src.vars.R_earth # Pa
         self.A1_m = self.data.gas.masses.value
         self.A1_mat_id = self.data.gas.material_ids.value
+        self.A1_h = self.data.gas.smoothing_lengths.value
+        self.A1_id = self.data.gas.particle_ids.value
         
         self.units = {
             "A2_pos":"R_earth",
@@ -28,6 +31,8 @@ class SimData:
             "A1_P":"Pa",
             "A1_m":"M_earth",
             "A1_L":"L_em",
+            "A1_h":"R_earth",
+            "A1_T":"K",
         }
         
     @property
@@ -78,5 +83,19 @@ class SimData:
     def centre_of_mass(self):
         CoM = np.sum(self.A1_m.reshape(-1,1)*self.A2_pos, axis=0)/np.sum(self.A1_m)
         return CoM
+    
+    # as method because slow to compute
+    def compute_A1_T(self):
+        woma.load_eos_tables()
+        A1_T = woma.eos.eos.A1_T_u_rho(self.A1_u * 1e6, self.A1_rho, self.A1_mat_id)
+        self.A1_T = A1_T
+        
+    @property
+    def N(self):
+        N = len(self.A1_m)
+        return N
+    
+        
+        
         
         

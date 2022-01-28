@@ -1,6 +1,7 @@
 import os
 import sys
 import src.vars
+import swiftsimio as sio
 
 dirname = os.path.dirname
 path = os.path.dirname(__file__)
@@ -379,3 +380,17 @@ def get_snapshot(N, n_snap=-1, **kwargs):
     files = sorted(files)
     
     return os.path.join(snapshots_folder, files[n_snap])
+
+def get_SI_data(fp):
+    
+    data = sio.load(fp)
+    A2_pos = (data.gas.coordinates.value - data.metadata.boxsize.value/2) * src.vars.R_earth
+    A2_vel = data.gas.velocities.value * src.vars.R_earth
+    A1_rho = data.gas.densities.value * src.vars.M_earth / src.vars.R_earth**3 # kg m3
+    A1_u = data.gas.internal_energies.value * src.vars.R_earth**2 #J/kg
+    A1_P = data.gas.pressures.value * src.vars.M_earth / src.vars.R_earth # Pa
+    A1_m = data.gas.masses.value * src.vars.M_earth
+    A1_mat_id = data.gas.material_ids.value
+    A1_h = data.gas.smoothing_lengths.value * src.vars.R_earth
+    
+    return A2_pos, A2_vel, A1_m, A1_h, A1_rho, A1_P, A1_u, A1_mat_id
