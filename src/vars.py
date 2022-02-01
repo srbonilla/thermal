@@ -44,3 +44,65 @@ Di_mat_id = {
 }
 # Invert so the ID are the keys
 Di_id_mat = {mat_id: mat for mat, mat_id in Di_mat_id.items()}
+
+# ID offset to distinguish different bodies e.g. impactor from target
+id_body = 10000
+A1_mat = [mat for mat in Di_mat_id.keys()]
+A1_id = [id for id in Di_mat_id.values()]
+for mat, id in zip(A1_mat, A1_id):
+    Di_mat_id[mat + "_2"] = id + id_body
+
+# Colours
+Di_mat_colour = {
+    # Ideal Gas
+    "idg_HHe": "#1199ff",
+    "idg_HHe_2": "#66ddee",
+    "idg_N2": "#1199ff",
+    "idg_N2_2": "#66ddee",
+    "idg_CO2": "#1199ff",
+    "idg_CO2_2": "#66ddee",
+    # Tillotson
+    "Til_iron": "#808080",
+    "Til_iron_2": "#775533",
+    "Til_granite": "#dd4400",
+    "Til_granite_2": "#ffdd00",
+    "Til_water": "#4169E1",
+    "Til_water_2": "#4169E1",
+    "Til_basalt": "#dd4400",
+    "Til_basalt_2": "#ffdd00",
+    # Hubbard & MacFarlane (1980) Uranus/Neptune
+    "HM80_HHe": "#1199ff",
+    "HM80_HHe_2": "#66ddee",
+    "HM80_ice": "#B0C4DE",
+    "HM80_ice_2": "#A080D0",
+    "HM80_rock": "#708090",
+    "HM80_rock_2": "#706050",
+    # SESAME
+    "SESAME_iron": "#808080",
+    "SESAME_iron_2": "#775533",
+    "SESAME_basalt": "#dd4400",
+    "SESAME_basalt_2": "#ffdd00",
+    "SESAME_water": "#4169E1",
+    "SESAME_water_2": "#4169E1",
+    "SS08_water": "#4169E1",
+    "SS08_water_2": "#4169E1",
+    "AQUA": "#4169E1",
+    "AQUA_2": "#4169E1",
+    "CMS19_H": "#1199ff",
+    "CMS19_H_2": "#66ddee",
+    "CMS19_He": "#1199ff",
+    "CMS19_He_2": "#66ddee",
+    "CMS19_HHe": "#1199ff",
+    "CMS19_HHe_2": "#66ddee",
+    # ANEOS
+    "ANEOS_forsterite": "#dd4400",
+    "ANEOS_forsterite_2": "#ffdd00",
+    "ANEOS_iron": "#808080",
+    "ANEOS_iron_2": "#775533",
+    "ANEOS_Fe85Si15": "#808080",
+    "ANEOS_Fe85Si15_2": "#775533",
+}
+
+# Invert so the ID are the keys
+Di_id_type = {type_id: mat for mat, type_id in Di_mat_type.items()}
+Di_id_colour = {Di_mat_id[mat]: c for mat, c in Di_mat_colour.items()}
