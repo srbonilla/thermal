@@ -7,9 +7,10 @@ class SimData:
     def __init__(self, fp, type):
         assert type in ("settling", "impact")
         
-        self.type = type
-        self.data = sio.load(fp)
         self.fp = fp
+        self.type = type
+        
+        self.data = sio.load(fp)
         
         self.A2_pos = self.data.gas.coordinates.value - self.data.metadata.boxsize.value/2 # R_earth units
         self.A2_vel = self.data.gas.velocities.value
@@ -93,7 +94,16 @@ class SimData:
     def A1_L(self):
         A1_L = np.sqrt(np.sum((self.A2_L)**2, axis=1))
         return A1_L
-        
+    
+    @property
+    def A2_l(self):
+        A2_l = np.cross(self.A2_pos, self.A2_vel)
+        return A2_l
+    
+    @property
+    def A1_l(self):
+        A1_l = np.sqrt(np.sum((self.A2_l)**2, axis=1))
+        return A1_l
     
     @property
     def angular_momentum(self):
@@ -123,13 +133,15 @@ class SimData:
         
         mat_id = src.vars.Di_mat_id[mat_core]
         planet_centre = np.median(self.A2_pos[self.A1_mat_id == mat_id, :], axis=0)
+        print("class, planet centre", planet_centre)
         
         self.A2_pos -= planet_centre
         
         mask_in_core = np.logical_and.reduce((self.A1_r < R_roche, self.A1_mat_id == mat_id))
         v_in_core = np.median(self.A2_vel[mask_in_core], axis=0)
+        print("class, planet velocity", v_in_core)
         
-        self.A2_vel -= v_in_core
+        #self.A2_vel -= v_in_core
         
     @property
     def M_in(self):
@@ -140,6 +152,56 @@ class SimData:
         M_in = np.sum(self.A1_m[mask])
         
         return M_in
+    
+    @property
+    def A1_a(self):
+        
+        A1_a = -src.vars.G * self.M_in / 2 / self.A1_E
+        A1_a *= src.vars.M_earth / src.vars.R_earth**3
+        
+        return A1_a
+    
+    @property
+    def A1_mask_in(self):
+        mask = self.A1_r < self.R_roche
+        return mask
+    
+    @property
+    def A1_mask_out(self):
+        mask = self.A1_r > self.R_roche
+        return mask
+    
+    @property
+    def A1_mask_target(self):
+        
+        mask = self.A1_id % 2 == 0
+        return mask
+    
+    @property
+    def A1_mask_impactor(self):
+        
+        mask = self.A1_id % 2 == 1
+        return mask
+    
+    @property
+    def A1_e(self):
+        
+        # e = sqrt(1 + 2*E*h**2/mu**2), E = energy per unit mass, h = L/m, mu = G(M + m) \sim GM
+        
+        A1_e = 2 * self.A1_E
+        A1_e *= self.A1_l**2
+        A1_e /= src.vars.G_earth**2
+        A1_e /= self.M_in**2
+        
+        A1_e = np.sqrt(1 + A1_e)
+        
+        return A1_e
+    
+    @property
+    def A1_periapsis(self):
+        
+        return (1 - self.A1_e) * self.A1_a
+    
         
         
     

@@ -4,6 +4,7 @@ R_earth = 6.371e6  # m
 M_earth = 5.9724e24  # kg
 R_gas = 8.3145  # Gas constant (J K^-1 mol^-1)
 L_em = 3.5e34
+G_earth = G / R_earth**3 * M_earth # R_earth^3 M_earth^-1 s^-2
 
 # Material IDs, same as SWIFT ( = type_id * type_factor + unit_id)
 type_factor = 100

@@ -2,6 +2,9 @@ import os
 import sys
 import src.vars
 import swiftsimio as sio
+import numpy as np
+import woma
+import h5py
 
 dirname = os.path.dirname
 path = os.path.dirname(__file__)
@@ -52,7 +55,6 @@ def get_sim_name(N, **kwargs):
         L_target = kwargs.get("L_target", 0)
         L_impactor = kwargs.get("L_impactor", 0)
         rep = kwargs.get("rep", 1)
-        assert rep in (1,2,3,4), f"rep must be in (1,2,3,4)"
         
         v_imp = kwargs.get("v_imp")
         assert v_imp, f"v_imp not indicated in **kwargs"
@@ -98,6 +100,7 @@ def make_yml(N, **kwargs):
     eta = kwargs.get("eta", 2.2)
     h_max = kwargs.get("h_max", 0.15)
     mat = kwargs.get("mat", "ANEOS")
+    time_end = kwargs.get("time_end", 10000)
     
     assert mat in ("ANEOS", "Til"), f"mat must be in ANEOS or Til"
     
@@ -122,15 +125,16 @@ def make_yml(N, **kwargs):
         f.write("# Parameters governing the time integration\n")
         f.write("TimeIntegration:\n")
         f.write("    time_begin:     0                   # The starting time of the simulation (in internal units).\n")
-        f.write("    time_end:       20000              # The end time of the simulation (in internal units).\n")
+        f.write("    time_end:       " + str(int(time_end)) + "              # The end time of the simulation (in internal units).\n")
         f.write("    dt_min:         0.0001              # The minimal time-step size of the simulation (in internal units).\n")
         f.write("    dt_max:         1000                # The maximal time-step size of the simulation (in internal units).\n\n")
 
         f.write("# Parameters governing the snapshots\n")
         f.write("Snapshots:\n")
         f.write("    basename:       ./snapshots/sim  # Common part of the name of output files\n")
-        f.write("#    output_list_on: 0\n")
-        f.write("#    output_list:    output_list.txt\n")
+        if kwargs.get("output_list"):
+            f.write("    output_list_on: 1\n")
+            f.write("    output_list:    output_list.txt\n")
         f.write("    time_first:     0                   # Time of the first output (in internal units)\n")
         f.write("    delta_time:     " + "{:d}".format(delta_time) + "                # Time difference between consecutive outputs (in internal units)\n")
         f.write("    int_time_label_on:  1               # Enable to label the snapshots using the time rounded to an integer (in internal units)\n\n")
@@ -304,6 +308,43 @@ def make_script_slurm(N, **kwargs):
         
     return None
 
+def make_autoresubmit(N, **kwargs):
+    
+    fp = get_sim_fp(N, **kwargs)
+    fn = os.path.join(fp, "auto_resubmit.sh")
+    
+    with open(fn, 'w') as f:
+        f.write("#!/bin/bash -l\n\n")
+        f.write("pwd\n")
+        f.write('echo " sbatch ./script_slurm_restart.sh"\n')
+        f.write("sbatch ./script_slurm_restart.sh\n")
+        
+    return None
+
+def make_output_list(N, A1_t=None, **kwargs):
+    
+    if A1_t is None:
+        t_0 = 0
+        t_1 = 20000
+        t_2 = 100000
+        step_0 = 2000
+        step_1 = 5000
+
+        A1_t_0 = np.arange(t_0, t_1, step_0, )
+        A1_t_1 = np.arange(t_1, t_2, step_1)
+        A1_t = np.sort(np.hstack((A1_t_0, A1_t_1, t_2)))
+        A1_t[0] = 1
+    
+    fp = get_sim_fp(N, **kwargs)
+    fn = os.path.join(fp, "output_list.txt")
+    
+    with open(fn, 'w') as f:
+        f.write("# Time\n")
+        for time in A1_t:
+            f.write(str(int(time)) + "\n")
+        
+    return None
+
 def create_sim_fp(N, **kwargs):
     
     fp = get_sim_fp(N, **kwargs)
@@ -330,20 +371,27 @@ def create_sim_fp(N, **kwargs):
 def start_sim(N, **kwargs):
     # why doesn't work????
     
+    A1_command = []
+    
     # go to folder
     command = "cd " + get_sim_fp(N, **kwargs)
     print(command)
+    A1_command.append(command)
     #os.system(command)
     
     # give execution permision
-    #command = "chmod u+x script_slurm.sh"
-    #print(command)
+    if kwargs.get("type") == "impact":
+        command = "chmod a+x auto_resubmit.sh"
+        print(command)
+        A1_command.append(command)
     #os.system(command)
     
     # submit job
     command = "sbatch script_slurm.sh"
     print(command)
+    A1_command.append(command)
     #os.system(command)
+    return A1_command
     
 ### functions to setup an impact
 def get_system_v_esc(M_t, R_t, M_i, R_i):
@@ -394,3 +442,85 @@ def get_SI_data(fp):
     A1_h = data.gas.smoothing_lengths.value * src.vars.R_earth
     
     return A2_pos, A2_vel, A1_m, A1_h, A1_rho, A1_P, A1_u, A1_mat_id
+
+def save_impact_config(N, fp_target, fp_impactor, **kwargs):
+    
+    assert kwargs.get("type") == "impact", f"kwargs.type must be 'impact'"
+    fp_sim = src.simsetup.get_sim_fp(N, **kwargs)
+
+    angle = kwargs.get("angle")
+    assert angle, f"angle not specified in kwargs"
+    angle = np.deg2rad(angle)
+    b = np.sin(angle)
+    v_imp = kwargs.get("v_imp")
+    assert v_imp, f"v_imp not specified in kwargs"
+    
+    t_des = kwargs.get("t_des", 60*60)
+    units_v_c = kwargs.get("units_v_c", "v_esc")
+    box_size = kwargs.get("box_size", 100*src.vars.R_earth)
+    spin_target = kwargs.get("spin_target", [0, 0, 1])
+    spin_impactor = kwargs.get("spin_impactor", [0, 0, 1])
+    
+    assert len(spin_target) == 3, f"Spin vector must have lenght 3"
+    assert len(spin_impactor) == 3, f"Spin vector must have lenght 3"
+    
+    A2_pos_target, A2_vel_target, A1_m_target, A1_h_target, A1_rho_target, A1_P_target, A1_u_target, A1_mat_id_target = src.simsetup.get_SI_data(fp_target)
+    A2_pos_impactor, A2_vel_impactor, A1_m_impactor, A1_h_impactor, A1_rho_impactor, A1_P_impactor, A1_u_impactor, A1_mat_id_impactor = src.simsetup.get_SI_data(fp_impactor)
+
+    # rotate target and impactor
+    A2_pos_target, A2_vel_target = woma.misc.utils.rotate_configuration(A2_pos_target, A2_vel_target, spin_target[0], spin_target[1], spin_target[2]) 
+    A2_pos_impactor, A2_vel_impactor = woma.misc.utils.rotate_configuration(A2_pos_impactor, A2_vel_impactor, spin_impactor[0], spin_impactor[1], spin_impactor[2]) 
+    
+    target = src.quantsim.SimData(fp_target, type="settling")
+    impactor = src.quantsim.SimData(fp_impactor, type="settling")
+    M_t = target.total_mass * src.vars.M_earth
+    M_i = impactor.total_mass * src.vars.M_earth
+    R_t = target.radius * src.vars.R_earth
+    R_i = impactor.radius * src.vars.R_earth
+
+    A1_pos_impactor, A1_vel_impactor = woma.misc.utils.impact_pos_vel_b_v_c_t(b, v_imp, t_des, R_t, R_i, M_t, M_i, units_b="b", units_v_c=units_v_c)
+    print(A1_pos_impactor/src.vars.R_earth)
+    print(A1_vel_impactor)
+    #A1_pos_impactor = A1_pos_impactor*R_earth
+
+    A2_pos_impactor[:] += A1_pos_impactor
+    A2_vel_impactor[:] += A1_vel_impactor
+
+    # Combined particle data
+    A2_pos      = np.append(A2_pos_target, A2_pos_impactor, axis=0)
+    A2_vel      = np.append(A2_vel_target, A2_vel_impactor, axis=0)
+    A1_m        = np.append(A1_m_target, A1_m_impactor)
+    A1_h        = np.append(A1_h_target, A1_h_impactor)
+    A1_rho      = np.append(A1_rho_target, A1_rho_impactor)
+    A1_P        = np.append(A1_P_target, A1_P_impactor)
+    A1_u        = np.append(A1_u_target, A1_u_impactor)
+    A1_mat_id   = np.append(A1_mat_id_target, A1_mat_id_impactor)
+    
+    # target has even id, impactor odd
+    N_t = len(A2_pos_target)
+    N_i = len(A2_pos_impactor)
+    A1_id = np.hstack((2*np.arange(N_t), 2*np.arange(N_i) + 1))
+    #A1_id       = np.arange(len(A2_pos))
+
+    # set centre of mass to 0
+    r_cm    = np.sum(A1_m.reshape(-1,1)*A2_pos, axis=0)/np.sum(A1_m)
+    A2_pos -= r_cm
+    #print(r_cm)
+
+    # set centre of mass velocity to 0
+    v_cm    = np.sum(A1_m.reshape(-1,1)*A2_vel, axis=0)/np.sum(A1_m)
+    A2_vel -= v_cm
+
+    L = A1_m.reshape(-1,1)*np.cross(A2_pos, A2_vel)
+    L = np.sum(L, axis=0)
+    L = np.linalg.norm(L)
+
+    print("Angular momentum:", L/src.vars.L_em)
+    
+    # Save
+    Fp_out = "ic.hdf5"
+    with h5py.File(os.path.join(fp_sim, Fp_out), 'w') as f:
+        woma.misc.io.save_particle_data(
+            f, A2_pos, A2_vel, A1_m, A1_h, A1_rho, A1_P, A1_u, A1_mat_id, A1_id,
+            boxsize=box_size, file_to_SI=woma.misc.io.SI_to_SI
+            )
