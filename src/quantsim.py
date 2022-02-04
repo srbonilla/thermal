@@ -42,6 +42,11 @@ class SimData:
         return A1_r
     
     @property
+    def A1_r_xy(self):
+        A1_r_xy = np.sqrt(np.sum((self.A2_pos[:, 0:2])**2, axis=1))
+        return A1_r_xy
+    
+    @property
     def A1_v(self):
         A1_v = np.sqrt(np.sum((self.A2_vel)**2, axis=1))
         return A1_v
@@ -106,6 +111,11 @@ class SimData:
         return A1_l
     
     @property
+    def A2_w(self):
+        A2_w = self.A2_l/self.A1_r.reshape(-1,1)**2
+        return A2_w
+    
+    @property
     def angular_momentum(self):
         L = np.sum(self.A1_L)
         return L
@@ -132,16 +142,14 @@ class SimData:
         self.R_roche = R_roche
         
         mat_id = src.vars.Di_mat_id[mat_core]
-        planet_centre = np.median(self.A2_pos[self.A1_mat_id == mat_id, :], axis=0)
+        mask = np.logical_and.reduce((self.A1_mat_id == mat_id, self.A1_mask_target))
+        planet_centre = np.median(self.A2_pos[mask, :], axis=0)
         print("class, planet centre", planet_centre)
-        
         self.A2_pos -= planet_centre
         
-        mask_in_core = np.logical_and.reduce((self.A1_r < R_roche, self.A1_mat_id == mat_id))
-        v_in_core = np.median(self.A2_vel[mask_in_core], axis=0)
-        print("class, planet velocity", v_in_core)
-        
-        #self.A2_vel -= v_in_core
+        planet_velocity = np.median(self.A2_vel[mask, :], axis=0)
+        print("class, planet velocity", planet_velocity)
+        self.A2_vel -= planet_velocity
         
     @property
     def M_in(self):
