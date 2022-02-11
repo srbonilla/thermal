@@ -21,10 +21,13 @@ class SimData:
         self.A1_mat_id = self.data.gas.material_ids.value
         self.A1_h = self.data.gas.smoothing_lengths.value
         self.A1_id = self.data.gas.particle_ids.value
+        if self.data.gas.accelerations.value is not None:
+            self.A2_acc = self.data.gas.accelerations.value
         
         self.units = {
             "A2_pos":"R_earth",
             "A2_vel":"R_earth/s",
+            "A2_acc":"R_earth/s^2",
             "A1_r":"R_earth",
             "A1_rho":"kg/m3",
             "A1_u":"MJ/kg",
